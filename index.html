@@ -10,7 +10,7 @@
   <title>Durango Virtual Trail Explorer</title>
 
   <!-- Calcite Bootstrap -->
-  <link rel="stylesheet" href="https://esri.github.com/calcite-maps/dist/css/calcite-maps-bootstrap.min-v0.3.css">
+  <link rel="stylesheet" href="https://esri.github.io/calcite-maps/dist/css/calcite-maps-bootstrap.min-v0.3.css">
 
   <!-- Calcite Maps -->
   <link rel="stylesheet" href="https://esri.github.io/calcite-maps/dist/css/calcite-maps-arcgis-4.x.min-v0.3.css">
@@ -621,11 +621,11 @@
 
       // Move graphic at max screen frame rate
       function animate(animate) {
+        setPlayUI(animate);
         if (app.task) {
           app.task.remove();
         }
         if (animate) {
-          setPlayUI(true);
           app.task = Scheduler.addFrameTask({
             update: function() {
               // Busy?
