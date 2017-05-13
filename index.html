@@ -7,7 +7,7 @@
   <meta name="description" content="Calcite-Maps Demo - ArcGIS">
   <meta name="author" content="">
   <link rel="icon" href="https://www.esri.com/favicon.ico">
-  <title>Durango Virtual Trail Explorer</title>
+  <title>Virtual Trail Explorer</title>
 
   <!-- Calcite Bootstrap -->
   <link rel="stylesheet" href="https://esri.github.io/calcite-maps/dist/css/calcite-maps-bootstrap.min-v0.3.css">
@@ -40,6 +40,10 @@
       visibility: collapse;
       z-index: 1;
     }
+
+    .text-larger {
+      font-size: 15px;
+    }
    
   </style>
 </head>
@@ -68,9 +72,9 @@
     </div> 
     <!-- Title -->
     <div class="calcite-title calcite-overflow-hidden">
-      <div class="calcite-title-main">Durango Virtual Trail Explorer</div>
+      <div class="calcite-title-main">Virtual Trail Explorer</div>
       <div class="calcite-title-divider"></div>
-      <div class="calcite-title-sub hidden-xs">Plan the best adventure possible!</div> 
+      <div class="calcite-title-sub hidden-xs">ArcGIS JavaScript v4, Calcite Maps, Bootstrap</div> 
     </div>
     <!-- Nav -->
     <ul class="nav navbar-nav calcite-nav">                    
@@ -109,12 +113,8 @@
       </div>
       <div id="collapseInfo" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingInfo">
           <div class="panel-body">
-              <p><h4>Find the trail of your dreams!</h4></p>
-              <ol>
-                <li>Search for a trail or click on the map</li>
-                <li>Play your trail in 2D or 3D</li>
-              </ol>
-              </p>
+            <p class="text-larger">1. Search for a trail name or click on the map</p>
+            <p class="text-larger">2. Play your trail in 2D or 3D</p>
           </div>
       </div>
     </div>
@@ -157,6 +157,7 @@
       "esri/widgets/BasemapToggle",
       "esri/widgets/NavigationToggle",
       "esri/widgets/Legend",
+      "esri/widgets/ScaleBar",
       "esri/views/ui/Component",
       "esri/core/watchUtils",
       "esri/core/Scheduler",
@@ -166,6 +167,7 @@
       "esri/symbols/ObjectSymbol3DLayer",
       "esri/Graphic",
       "esri/geometry/Polyline",
+      "esri/renderers/support/jsonUtils",
 
       "esri/geometry/geometryEngine",
       "esri/tasks/support/LengthsParameters",
@@ -187,36 +189,35 @@
       "calcite-maps/calcitemaps-v0.3",
       "dojo/domReady!"
     ], function(Map, Basemap, MapView, SceneView, WebMap, Camera, FeatureLayer, SceneLayer, Popup, PopupTemplate, 
-      Home, Search, Locate, BasemapToggle, NavigationToggle, Legend, Component, 
-      watchUtils, Scheduler, Point, SimpleMarkerSymbol, PointSymbol3D, ObjectSymbol3DLayer, Graphic, Polyline,
+      Home, Search, Locate, BasemapToggle, NavigationToggle, Legend, ScaleBar, Component, 
+      watchUtils, Scheduler, Point, SimpleMarkerSymbol, PointSymbol3D, ObjectSymbol3DLayer, Graphic, Polyline, RendererJSON,
       geometryEngine, LengthsParameters, 
       query, keys, on, dom) {
         
-      // App
+      /* App */
+
       app = {
-        webmap: "9f91f911f58540ceaac0300c55e18fbb",
-        lonlat: [-107.88007, 37.27529],
-        zoom: 10,
-        heading: 271,
-        tilt: 75,
+        //webmap: "9f91f911f58540ceaac0300c55e18fbb",
+        layerUrl: "https://services3.arcgis.com/AIhXi099WVQHFHhq/arcgis/rest/services/Trails_2000_Database/FeatureServer/0",
+        // Map
         map: null,
+        layer: null,
+        basemap2d: "topo-vector",
+        basemap3d: "satellite",
+        // View
         mapView: null,
         sceneView: null,
         activeView: null,
+        lonlat: [-107.8801, 37.2753],
+        zoom: 14,
+        heading: 271,
+        tilt: 75,
         viewPadding: {
           top: 50
         },
-        layer: null,
-        basemap: "satellite",
-        searchWidgetNav: null,
-        searchWidgetPanel: null,
-        trailGeometry: null,
-        trailDistance: 0,
-        pointSymbol2d: null,
-        pointSymbolSize2d: 12,
-        pointSymbol3d: null,
-        pointSymbolSize3d: 150, // meters
-        pointSymbolColorHex: "#2F93EC",
+        symbolWidth2d: 1.5,
+        symbolWidth3d: 25,
+        // Popup
         popupOptions: {
           autoPanEnabled: true,
           messageEnabled: false,
@@ -226,6 +227,16 @@
             position: "auto"
           }
         },
+        // Widgets
+        searchWidgetNav: null,
+        searchWidgetPanel: null,
+        trailGeometry: null,
+        trailDistance: 0,
+        pointSymbol2d: null,
+        pointSymbolSize2d: 12,
+        pointSymbol3d: null,
+        pointSymbolSize3d: 50, // meters
+        pointSymbolColorHex: "#2F93EC",
         task: null,
         animating: false,
         animatingScale: 20000,
@@ -234,113 +245,130 @@
         index: 0
       };
 
+      /* Entry point */
+
       init();
 
       function init() { 
-        // Views
-        loadMap()
-          .then(function(map){
-            app.map = map;
-            map.ground = "world-elevation"; // Add ground for 3D
-            // app.layer = app.map.layers.find(function(lyr){
-            //   if (lyr.title === "Trails") {
-            //     return lyr;
-            //   }
-            // })
-            app.layer = app.map.layers.getItemAt(1);
-            if (!app.layer || !app.layer === "Trails") {
-              console.error("Trails layer not found.");
-              return;
-            }
-            createMap();
-            createScene();
-            app.activeView = app.mapView;
-            // Search
-            createSearchWidget("searchNavDiv"); 
-            // Panel
-            setPanelWatch();      
-          })
-          .otherwise(function(err){
-            console.log(err);
-          });
-        // Symbols
-        createPointSymbol2d();
-        createPointSymbol3d();
+        // Map
+        app.map = createMap(true);
+        app.layer = createLayer(true,app.layerUrl);
+        app.renderer2d = createRenderer(true);
+        app.layer.renderer = app.renderer2d;
+        app.map.add(app.layer);
+        // 2D
+        app.mapView = createView("MapView","mapViewDiv",app.map);
+        app.mapView.then(function(){
+          setMapViewWidgets();
+          setPopupTemplate(app.mapView,app.layer);
+        });
+        app.pointSymbol2d = createPointSymbol2d();
+        // 3D
+        app.sceneView = createView("SceneView","sceneViewDiv",app.map);
+        app.renderer3d = createRenderer(false);
+        app.sceneView.then(function(){
+          setSceneViewWidgets();
+          setPopupTemplate(app.sceneView,app.layer)
+        });
+        app.pointSymbol3d = createPointSymbol3d();              
+        // Set active view
+        app.activeView = app.mapView;
+        // Search
+        app.searchWidgetNav = createSearchWidget("searchNavDiv",app.mapView,app.layer);
+        // Panels
+        setPanelWatch();
       }
 
       /* Map */
 
-      function loadMap() {
-        var webMap = new WebMap({
-          portalItem: {
-            id: app.webmap
-          }
+      function createMap(layerUrl) {
+        var map = new Map({
+          basemap: app.basemap2d,
+          ground: "world-elevation",
         });
-        return webMap.load();
+        return map;
       }
 
-      /* Views */
+      /* Layer */
 
-      function createMap() {
-        app.mapView = createView("MapView", "mapViewDiv", app.map);
-        setPopupTemplate(app.mapView, app.layer);
-        createHomeWidget(app.mapView, "top-left", 0);
-        createLocateWidget(app.mapView, "top-left");
-        createBasemapWidget(app.mapView, "bottom-left");
-        createLegend(app.mapView, "bottom-right");
-        setWidgetsVisible(app.mapView);
-        setPopupMinimize(app.mapView);
-        setPopupWatches(app.mapView);
-      }
-
-      function createScene() {
-        app.sceneView = createView("SceneView", "sceneViewDiv", app.map);
-        setPopupTemplate(app.sceneView, app.layer);
-        app.sceneHome = createHomeWidget(app.sceneView, "top-left", 0);
-        //createNavigationToggleWidget(app.sceneView, "top-left");
-        createLocateWidget(app.sceneView, "top-left");
-        createBasemapWidget(app.sceneView, "bottom-left");
-        createLegend(app.sceneView, "bottom-right");
-        setWidgetsVisible(app.sceneView);
-        setPopupMinimize(app.sceneView);
-        setWatchSymbolSize(app.sceneView);
-        // Force webGL to load and draw...
-        setInitialExtent(app.sceneView, app.layer);        
-        setPopupWatches(app.sceneView);
-      }
-
-      function createView(viewType, div, map) {
-        var view;
-        if (viewType === "MapView") {
-          view = new MapView();
-        } else {
-          view = new SceneView();
-        }
-        view.set({
-          container: div,
-          map: map,
-          padding: app.viewPadding,
-          ui: {
-            components: ["zoom", "compass", "attribution"]
+      function createLayer(is2d,url) {
+        var layer = new FeatureLayer({
+          url: url,
+          elevationInfo: is2d ? {} : {
+            "offset": 50,
+            "mode": "relativeToGround"// "on-the-ground" //"relativeToGround"
           },
-          popup: new Popup(app.popupOptions)
+          outFields: ["*"]
         });
-        return view;
+        return layer;
       }
 
-      function setInitialExtent(view, layer){
-        view.whenLayerView(layer).then(function(layerView){
-          view.extent = layerView.layer.fullExtent;
-          app.sceneHome.viewpoint = view.viewpoint;
-        });        
+      function createRenderer(is2d) {
+        // Create symbol
+        function createSymbol(is2d,color){
+          var sym;
+          if (is2d) {
+            sym = {    
+              "color": color,
+              "width": app.symbolWidth2d,
+              "type": "esriSLS",
+              "style": "esriSLSSolid"
+            }
+          } else {
+            sym = {
+              "type": "LineSymbol3D",
+              "symbolLayers": [
+                {
+                  "size": app.symbolWidth3d,
+                  "type": "Path",
+                  "enable": true,
+                  "material": {
+                    "color": color,
+                    "transparency": 0
+                  }
+                }
+              ]
+            }
+          }
+          return sym;
+        }
+        var json = {
+          "type": "uniqueValue",
+          "field1": "RATING",
+          "defaultSymbol": null,
+          "uniqueValueInfos": [
+            {
+              "value": "Expert",
+              "symbol": createSymbol(is2d,[230,0,0,255]),
+              "label": "Expert"
+            },
+            {
+              "value": "Difficult",
+              "symbol": createSymbol(is2d,[230,150,0,255]),
+              "label": "Difficult"
+            },
+            {
+              "value": "Moderate",
+              "symbol": createSymbol(is2d,[230,170,230,255]),
+              "label": "Moderate"
+            },
+            {
+              "value": "Easy",
+              "symbol": createSymbol(is2d,[110,170,0,255]),
+              "label": "Easy"
+            }
+          ]
+        }
+        return RendererJSON.fromJSON(json);
       }
 
       /* Popup */
 
-      function setPopupTemplate(view, layer) {
-        var popupTemplate = layer.popupTemplate;
+      function setPopupTemplate(view,layer) {
+        // var popupTemplate = layer.popupTemplate;
+        var popupTemplate = new PopupTemplate();
         // Title
-        // popupTemplate.title = "{Trail_Name}";
+        popupTemplate.title = "{TRAILNAME}";
         // Content
         popupTemplate.content = function(value, key, data) {
           var graphic = value.graphic;
@@ -348,7 +376,11 @@
             reset();
             app.trailGeometry = densifyGeometry(graphic);
             var length = getLineLength(app.trailGeometry);
-            return "This trail is " + Math.round(length * 10) / 10 + " miles.";  
+            var rating = graphic.attributes["RATING"];
+            var usage = graphic.attributes["USAGE"];
+            var mgmt = graphic.attributes["MGMTAGENCY"];
+            var system = graphic.attributes["SYSTEM"]
+            return "<b>Distance:</b> " + Math.round(length * 10) / 10 + " miles<br><b>Rating:</b> " + rating + " <br><b>System:</b> " + system + "<br><b>Management:</b> " + mgmt + "<br>";  
           }
         }.bind(this);
         // Actions
@@ -372,6 +404,79 @@
         }
         view.popup.on("trigger-action", playTriggerAction.bind(this));
         popupTemplate.actions = actions;
+        // Apply to layer
+        layer.popupTemplate = popupTemplate;
+        return popupTemplate;
+      }
+
+      /* Views */
+
+      function createView(viewType, div, map, tilt) {
+        var view;
+        if (viewType === "MapView") {
+          view = new MapView();
+        } else {
+          view = new SceneView();
+        }
+        view.set({
+          container: div,
+          map: map,
+          padding: app.viewPadding,
+          ui: {
+            components: ["zoom", "compass", "attribution"]
+          },
+          popup: new Popup(app.popupOptions),
+          center: app.lonlat,
+          zoom: app.zoom
+        });
+        return view;
+      }
+
+      function setMapViewWidgets() {
+        createHomeWidget(app.mapView, "top-left", 0);
+        //createLocateWidget(app.mapView, "top-left");
+        createBasemapWidget(app.mapView, "satellite", "bottom-left");
+        createLegend(app.mapView, "bottom-right");
+        //createScaleBar(app.sceneView, "bottom-left");
+        setWidgetsVisible(app.mapView);
+        setPopupMinimize(app.mapView);
+        setPopupWatches(app.mapView);
+      }
+
+      function setSceneViewWidgets(type, div, map, layer) {
+        app.sceneHome = createHomeWidget(app.sceneView, "top-left", 0);
+        createNavigationToggleWidget(app.sceneView, "top-left");
+        //createLocateWidget(app.sceneView, "top-left");
+        //createBasemapWidget(app.sceneView, "topo-vector", "bottom-left");
+        createLegend(app.sceneView, "bottom-right");
+        //createScaleBar(app.sceneView, "bottom-left");
+        setWidgetsVisible(app.sceneView);
+        //setWatchSymbolSize(app.sceneView);
+        // // Force webGL to load and draw...
+        // setInitialExtent(app.sceneView, layer); 
+        setPopupMinimize(app.sceneView);      
+        setPopupWatches(app.sceneView);
+      }
+
+      // Extent
+
+      function setInitialExtent(view, layer){
+        view.whenLayerView(layer).then(function(layerView){
+          view.extent = layerView.layer.fullExtent;
+          app.sceneHome.viewpoint = view.viewpoint;
+          view.goTo({
+            target: view.extent.center,
+            tilt: app.tilt,
+            zoom: app.zoom + 1
+          });
+        });        
+      }
+
+      function setElevation(layer) {
+        layer.elevationInfo = {
+          offset: 10,
+          mode: "relativeToGround"
+        }
       }
 
       function densifyGeometry(feature) {
@@ -459,17 +564,17 @@
         });
       }
 
-      function createSearchWidget(parentId) {
+      function createSearchWidget(parentId,view,lyr) {
+        // Widget
         var search = new Search({
-            view: app.activeView,
+            view: view,
             enableHighlight: false
           }, parentId);
-        var lyr = app.layer;
         search.sources = []; //clear
         search.sources.push({
           featureLayer: lyr,
-          searchFields: ["Trail_Name"],
-          displayField: "Trail_Name",
+          searchFields: ["TRAILNAME"],
+          displayField: "TRAILNAME",
           exactMatch: false,
           outFields: ["*"],
           resultGraphicEnabled: true,
@@ -480,8 +585,7 @@
         });
         // search.popupEnabled = true,
         search.popupOpenOnSelect = true;
-        app.searchWidgetNav = search;
-        // watch
+        // Manually show popup
         search.watch("selectedResult", function(result){
           if (result && result.feature) {
             var feature = result.feature;
@@ -494,7 +598,6 @@
             reset();
           }
         });
-
         return search;
       }
 
@@ -517,10 +620,10 @@
         return locate;
       }
 
-      function createBasemapWidget(view, position) {
+      function createBasemapWidget(view, secondBasemap, position) {
         var basemapToggle = new BasemapToggle({
           view: view, 
-          secondaryBasemap: "satellite"
+          secondaryBasemap: secondBasemap
         });
         view.ui.add(basemapToggle, position);
         return basemapToggle;
@@ -528,7 +631,11 @@
 
       function createLegend(view, position) {
         var legend = new Legend({
-          view: view
+          view: view,
+          layerInfos: [{
+            layer: app.layer,
+            title: "Durango Trails"
+          }]
         });
         view.ui.add(legend, position);
         return legend;
@@ -542,6 +649,14 @@
         return navToggle;
       }
 
+      function createScaleBar(view, position) {
+         var scalebar = new ScaleBar({
+          view: view
+        });
+        view.ui.add(scalebar, position);
+        return scalebar; 
+      }
+
       /* Symbols */
 
       function createPointSymbol2d() {
@@ -550,7 +665,7 @@
           color: app.pointSymbolColorHex,
           outline: {width: 2, color: "#fff"}
         });
-        app.pointSymbol2d = sym;
+        return sym;
       }
 
       function createPointSymbol3d() {
@@ -566,35 +681,35 @@
             }
           })]
         });
-        app.pointSymbol3d = sym;
+        return sym;
       }
 
-      function calcSymbolSize3d() {
-        if (app.sceneView.scale > 0) {
-          var size = app.sceneView.scale / 250;
-          app.pointSymbolSize3d = size;          
-        }
-      }
+      // function calcSymbolSize3d() {
+      //   if (app.sceneView.scale > 0) {
+      //     var size = app.sceneView.scale / 200;
+      //     app.pointSymbolSize3d = size;          
+      //   }
+      // }
 
-      function update3dGraphicSymbol() {
-        if (app.sceneView.graphics && app.sceneView.graphics.length) {
-          var point = app.sceneView.graphics.getItemAt(0).geometry;
-          updateGraphic(point);
-        }
-      }
+      // function update3dGraphicSymbol() {
+      //   if (app.sceneView.graphics && app.sceneView.graphics.length) {
+      //     var point = app.sceneView.graphics.getItemAt(0).geometry;
+      //     updateGraphic(point);
+      //   }
+      // }
 
-      function update3dGraphicSize(){
-        calcSymbolSize3d();
-        createPointSymbol3d();
-        update3dGraphicSymbol();
-      }
+      // function update3dGraphicSize(){
+      //   calcSymbolSize3d();
+      //   app.pointSymbol3d = createPointSymbol3d();
+      //   //update3dGraphicSymbol();
+      // }
 
-      function setWatchSymbolSize(view) {
-        watchUtils.whenFalse(view, "updating", function(val) {
-          // Reset symbol size (3D only)
-          update3dGraphicSize();
-        });
-      }
+      // function setWatchSymbolSize(view) {
+      //   watchUtils.whenFalse(view, "updating", function(val) {
+      //     // Reset symbol size (3D only)
+      //     update3dGraphicSize();
+      //   });
+      // }
 
       /* Player */
 
@@ -641,11 +756,13 @@
                   updateGraphic(point);
                   updateDistanceUI(point);
                 } else {
-                  app.task.remove();
-                  app.animating = false;
-                  app.trailDistance = 0;  
                   app.index = 0;
-                  setPlayUI(false);
+                  // app.task.remove();
+                  // app.animating = false;
+                  app.trailDistance = 0;  
+                  // app.index = 0;
+                  // setPlayUI(false);
+                  start();  // continuous loop
                 }
                 app.index++;
               }
@@ -701,6 +818,8 @@
         app.index = 0;
       }
 
+      /* Toggle views */
+
       function hidePopups() {
         if (app.mapView) {
           app.mapView.popup.close();
@@ -710,36 +829,76 @@
         }
       }
 
-      function syncViews(fromView, toView) {
+      function setActiveView(view) {
+        app.activeView = view;
+      }
+
+      function setBasemap(basemap) {
+        app.activeView.map.basemap = basemap;
+      }
+
+      function setRenderer(renderer) {
+        app.activeView.map.layers.getItemAt(0).renderer = renderer;
+      }
+
+      function setSearchView(toView) {
+        app.searchWidgetNav.view = toView;
+      }
+
+      function setLocation(fromView, toView, is3d) {
         reset();
-        // Sync view
-        //toView.extent = fromView.extent.clone();
-        toView.viewpoint = fromView.viewpoint.clone();
+        var viewpoint = fromView.viewpoint.clone();
+        return toView.goTo({
+          target: viewpoint,
+          tilt: is3d ? app.tilt : 0
+        })
+      }
+
+      function setPopup(fromView,toView) {
         // Sync popup when done drawing
         watchUtils.whenFalseOnce(toView, "updating", function(){
           if (fromView.popup.selectedFeature) {
             var selectedFeature = fromView.popup.selectedFeature.clone();
+            //toView.popup.clear();
             toView.popup.open({
-              features: [selectedFeature],
+              title: fromView.popup.title,
+              content: fromView.popup.content,
+              //features: [selectedFeature],
+              //updateLocationEnabled: true
               location: fromView.popup.location
             });
-            toView.popup.dockEnabled = fromView.popup.dockEnabled;                        
-            fromView.popup.close();
+            //toView.popup.clear();
+            toView.popup.dockEnabled = fromView.popup.dockEnabled;  
+            //toView.popup.reposition();
+            //fromView.popup.close();
+            // fromView.popup.clear();
           }
-        })
+        });
       }
+
+      function closePopup(view) {
+        view.popup.close();
+      }
+
+      /* Tab 2D and 3D */
 
       query("nav li a[data-toggle='tab']").on("shown.bs.tab", function(e) {
         // Sync views
         if (e.target.text === "2D") {
-          app.activeView = app.mapView;
-          syncViews(app.sceneView, app.mapView); 
+          closePopup(app.sceneView);
+          setActiveView(app.mapView);
+          setBasemap(app.basemap2d);
+          setRenderer(app.renderer2d);
+          setSearchView(app.mapView);
+          setLocation(app.sceneView, app.mapView, false);
         } else {
-          app.activeView = app.sceneView;
-          syncViews(app.mapView, app.sceneView);                  
+          closePopup(app.mapView);
+          setActiveView(app.sceneView);
+          setBasemap(app.basemap3d);
+          setRenderer(app.renderer3d);
+          setSearchView(app.sceneView);
+          setLocation(app.mapView, app.sceneView, true);
         }
-        // Set search
-        app.searchWidgetNav.view = app.activeView;
       });
     
     });// dojo
