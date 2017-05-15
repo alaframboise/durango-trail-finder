@@ -44,6 +44,11 @@
     .text-larger {
       font-size: 15px;
     }
+
+    .text-caps {
+      text-transform: capitalize;
+      color: #828282;
+    }
    
   </style>
 </head>
@@ -113,8 +118,9 @@
       </div>
       <div id="collapseInfo" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingInfo">
           <div class="panel-body">
-            <p class="text-larger">1. Search for a trail name or click on the map</p>
-            <p class="text-larger">2. Play your trail in 2D or 3D</p>
+            <p class="text-larger">1. Search for a trail by name or;
+            <p class="text-larger">2. Click on the map;</p>
+            <p class="text-larger">3. Play your trail in 2D or 3D.</p>
           </div>
       </div>
     </div>
@@ -215,8 +221,6 @@
         viewPadding: {
           top: 50
         },
-        symbolWidth2d: 1.5,
-        symbolWidth3d: 25,
         // Popup
         popupOptions: {
           autoPanEnabled: true,
@@ -230,19 +234,23 @@
         // Widgets
         searchWidgetNav: null,
         searchWidgetPanel: null,
-        trailGeometry: null,
-        trailDistance: 0,
+        // Renderer
+        symbolWidth2d: 1.5,
+        symbolWidth3d: 10,
+        // Animation
         pointSymbol2d: null,
         pointSymbolSize2d: 12,
         pointSymbol3d: null,
-        pointSymbolSize3d: 50, // meters
+        pointSymbolSize3d: 30, // meters
         pointSymbolColorHex: "#2F93EC",
+        trailGeometry: null,
+        trailDistance: 0,
+        index: 0,
         task: null,
         animating: false,
         animatingScale: 20000,
         animatingTilt: 80,
-        animatingHeading: 200,
-        index: 0
+        animatingHeading: 200
       };
 
       /* Entry point */
@@ -339,7 +347,7 @@
           "uniqueValueInfos": [
             {
               "value": "Expert",
-              "symbol": createSymbol(is2d,[230,0,0,255]),
+              "symbol": createSymbol(is2d,[215,0,0,255]),
               "label": "Expert"
             },
             {
@@ -349,7 +357,7 @@
             },
             {
               "value": "Moderate",
-              "symbol": createSymbol(is2d,[230,170,230,255]),
+              "symbol": createSymbol(is2d,[215,215,0,255]),
               "label": "Moderate"
             },
             {
@@ -379,8 +387,9 @@
             var rating = graphic.attributes["RATING"];
             var usage = graphic.attributes["USAGE"];
             var mgmt = graphic.attributes["MGMTAGENCY"];
-            var system = graphic.attributes["SYSTEM"]
-            return "<b>Distance:</b> " + Math.round(length * 10) / 10 + " miles<br><b>Rating:</b> " + rating + " <br><b>System:</b> " + system + "<br><b>Management:</b> " + mgmt + "<br>";  
+            var system = graphic.attributes["SYSTEM"];
+            rating = (rating === "Easy" || rating === "Expert") ? "an " + "<b>"+rating.toLowerCase()+"</b>" : "a " + "<b>"+rating.toLowerCase()+"</b>";
+            return "This is " + rating + " trail that is <b>" + Math.round(length * 10) / 10 + " miles</b> long.<br><br><span class='text-caps'>" + system + " / " + mgmt + "</span>";  
           }
         }.bind(this);
         // Actions
