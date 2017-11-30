@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="description" content="Calcite-Maps Demo - ArcGIS">
+  <meta name="author" content="">
+  <link rel="icon" href="https://www.esri.com/favicon.ico">
+  <title>Virtual Trail Explorer</title>
+
+  <!-- Calcite Bootstrap -->
+  <link rel="stylesheet" href="https://esri.github.io/calcite-maps/dist/css/calcite-maps-bootstrap.min-v0.5.css">
+
+  <!-- Calcite Maps -->
+  <link rel="stylesheet" href="https://esri.github.io/calcite-maps/dist/css/calcite-maps-arcgis-4.x.min-v0.5.css">
+
+  <!-- ArcGIS JS 4.x -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.6/esri/css/main.css">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    .esri-view-width-less-than-large .esri-popup__action-text {
+      display: block;
+    }
+
+    .calcite-maps .tab-content>.tab-pane.active {
+      display: block;
+      visibility: visible;
+      z-index: 10;
+    }
+
+    .calcite-maps .tab-content>.tab-pane {
+      display: block;
+      visibility: collapse;
+      z-index: 1;
+    }
+
+    .text-larger {
+      font-size: 15px;
+    }
+
+    .text-caps {
+      text-transform: capitalize;
+      color: #828282;
+    }
+
+    .calcite-maps .esri-widget-button {
+      z-index: auto;
+    }
+   
+  </style>
+</head>
+
+<body class="calcite-maps calcite-nav-top">
+
+  <!-- Navbar -->
+
+  <nav class="navbar navbar-fixed-top calcite-navbar calcite-bg-custom calcite-text-light calcite-bgcolor-black-75">
+    <!-- Dropdown Menu -->
+    <div class="dropdown calcite-dropdown calcite-bg-light calcite-text-dark" role="presentation">
+      <a class="dropdown-toggle" role="button" aria-haspopup="true" aria-expanded="false">
+        <div class="calcite-dropdown-toggle">
+          <span class="sr-only">Toggle dropdown menu</span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </a>
+      <ul class="dropdown-menu">
+        <li><a class="hidden-md hidden-lg" href="#mapTab" aria-controls="mapTab" role="tab" data-toggle="tab"> 2D</a></li>
+        <li><a class="hidden-md hidden-lg" href="#sceneTab" aria-controls="sceneTab" role="tab" data-toggle="tab"> 3D</a></li>
+        <li><a role="button" data-target="#panelInfo" aria-haspopup="true"><span class="glyphicon glyphicon-info-sign"></span> Get Started</a></li>
+      </ul>
+    </div> 
+    <!-- Title -->
+    <div class="calcite-title calcite-overflow-hidden">
+      <div class="calcite-title-main">Portland Trail Explorer</div>
+      <div class="calcite-title-divider"></div>
+      <div class="calcite-title-sub hidden-xs">ArcGIS JavaScript v4, Calcite Maps, Bootstrap</div> 
+    </div>
+    <!-- Nav -->
+    <ul class="nav navbar-nav calcite-nav">                    
+      <li class="active"><a id="mapNav" class="hidden-xs" href="#mapTab" aria-controls="mapTab" aria-expanded="true" role="tab" data-toggle="tab" data-tooltip="tip" title="2D View" data-placement="bottom">2D</a></li>
+      <li><a id="sceneNav" class="hidden-xs" href="#sceneTab" aria-controls="sceneTab" role="tab" data-toggle="tab" data-tooltip="tip" title="3D View" data-placement="bottom">3D</a></li>                  
+      <li><div class="calcite-navbar-search"><div id="searchNavDiv"></div></div></li>
+    </ul>
+
+  </nav><!--/.navbar -->
+
+  <!-- Map Container  -->
+
+  <div class="calcite-map calcite-map-absolute">
+    <div id="tabContainer" class="tab-content">
+      <div id="mapTab" class="tab-pane active" role="tabpanel">
+        <div id="mapViewDiv"></div>
+      </div>
+      <div id="sceneTab" class="tab-pane" role="tabpanel">
+        <div id="sceneViewDiv"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  
+  <div class="calcite-panels calcite-panels-right calcite-bg-dark calcite-text-light panel-group" role="tablist" aria-multiselectable="true">
+    
+    <!-- Info Panel -->
+    
+    <div id="panelInfo" class="panel collapse in">
+      <div id="headingInfo" class="panel-heading" role="tab">
+        <div class="panel-title">
+          <a class="panel-toggle" role="button" data-toggle="collapse" href="#collapseInfo" data-parent="#panelAccordion" aria-expanded="true" aria-controls="collapseInfo"><span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span><span class="panel-label">Get Started</span></a>
+          <a class="panel-close" role="button" data-toggle="collapse" data-target="#panelInfo"><span class="esri-icon esri-icon-close" aria-hidden="true"></span></a>  
+        </div>
+      </div>
+      <div id="collapseInfo" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingInfo">
+          <div class="panel-body">
+            <p class="text-larger">1. Search for a trail by name or;
+            <p class="text-larger">2. Click on the map;</p>
+            <p class="text-larger">3. Play your trail in 2D or 3D.</p>
+          </div>
+      </div>
+    </div>
+    
+  </div> <!-- /.panel-group -->
+
+  <script type="text/javascript">
+    var dojoConfig = {
+      has: {
+        //"esri-featurelayer-webgl": 1,
+        "esri-promise-compatibility-deprecation-warnings": 0
+      },
+      packages: [{
+        name: "bootstrap",
+        location: "https://esri.github.io/calcite-maps/dist/vendor/dojo-bootstrap"
+      },
+      {
+        name: "calcite-maps",
+        location: "https://esri.github.io/calcite-maps/dist/js/dojo"
+      }]
+    };
+  </script>
+
+  <!-- ArcGIS JS 4.x -->
+  <script src="https://js.arcgis.com/4.6/"></script>
+
+  <script>
+
+    var app;
+
+    require(["esri/Map",
+      "esri/Basemap",
+      "esri/views/MapView",
+      "esri/views/SceneView",
+      "esri/WebMap",
+      "esri/Camera",
+      "esri/layers/FeatureLayer",
+      "esri/layers/SceneLayer",
+      "esri/widgets/Popup",
+      "esri/PopupTemplate",
+      "esri/widgets/Home",
+      "esri/widgets/Search",
+      "esri/widgets/Locate",
+      "esri/widgets/BasemapToggle",
+      "esri/widgets/NavigationToggle",
+      "esri/widgets/Legend",
+      "esri/widgets/ScaleBar",
+      "esri/views/ui/Component",
+      "esri/core/watchUtils",
+      "esri/core/Scheduler",
+      "esri/geometry/Point",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/PointSymbol3D",
+      "esri/symbols/ObjectSymbol3DLayer",
+      "esri/Graphic",
+      "esri/geometry/Polyline",
+      "esri/renderers/support/jsonUtils",
+
+      "esri/geometry/geometryEngine",
+      "esri/tasks/support/LengthsParameters",
+
+      // Dojo
+      "dojo/query",
+      "dojo/keys",
+      "dojo/on",
+      "dojo/dom",
+
+      // Calcite-maps
+      "calcite-maps/calcitemaps-v0.5",
+      // Calcite Maps ArcGIS Support
+      "calcite-maps/calcitemaps-arcgis-support-v0.5",
+
+      // Bootstrap
+      "bootstrap/Collapse", 
+      "bootstrap/Dropdown",
+      "bootstrap/Tab",
+      "bootstrap/Tooltip",
+      "bootstrap/Modal",
+      
+      "dojo/domReady!"
+    ], function(Map, Basemap, MapView, SceneView, WebMap, Camera, FeatureLayer, SceneLayer, Popup, PopupTemplate, 
+      Home, Search, Locate, BasemapToggle, NavigationToggle, Legend, ScaleBar, Component, 
+      watchUtils, Scheduler, Point, SimpleMarkerSymbol, PointSymbol3D, ObjectSymbol3DLayer, Graphic, Polyline, RendererJSON,
+      geometryEngine, LengthsParameters, 
+      query, keys, on, dom, calciteMaps, calciteMapsSupport) {
+        
+      /* App */
+
+      app = {
+        //webmap: "9f91f911f58540ceaac0300c55e18fbb",
+        //layerUrl: "https://services3.arcgis.com/AIhXi099WVQHFHhq/arcgis/rest/services/Trails_2000_Database/FeatureServer/0",
+        layerUrl: "https://www.portlandmaps.com/arcgis/rest/services/Public/COP_OpenData/MapServer/27",
+        // Map
+        map: null,
+        layer: null,
+        basemap2d: "topo-vector",
+        basemap3d: "satellite",
+        // View
+        mapView: null,
+        sceneView: null,
+        activeView: null,
+        lonlat: [-122.76610,45.56422],
+        zoom: 13,
+        heading: 71,
+        tilt: 75,
+        viewPadding: {
+          top: 50
+        },
+        // Popup
+        popupOptions: {
+          autoPanEnabled: true,
+          messageEnabled: false,
+          spinnerEnabled: false,
+          dockOptions: {
+            buttonEnabled: true,
+            position: "auto"
+          },
+          highlightEnabled: false
+        },
+        // Widgets
+        searchWidgetNav: null,
+        searchWidgetPanel: null,
+        // Renderer
+        symbolWidth2d: 1.5,
+        symbolWidth3d: 10,
+        // Animation
+        pointSymbol2d: null,
+        pointSymbolSize2d: 12,
+        pointSymbol3d: null,
+        pointSymbolSize3d: 50, // meters
+        pointSymbolColorHex: "#2F93EC",
+        trailGeometry: null,
+        trailDistance: 0,
+        index: 0,
+        task: null,
+        animating: false,
+        animatingScale: 20000,
+        animatingTilt: 80,
+        animatingHeading: 200
+      };
+
+      /* Entry point */
+
+      init();
+
+      function init() { 
+        // Map
+        app.map = createMap(true);
+        app.layer = createLayer(true,app.layerUrl);
+        app.renderer2d = createRenderer(true);
+        app.layer.renderer = app.renderer2d;
+        app.map.add(app.layer);
+        // 2D
+        app.mapView = createView("MapView","mapViewDiv",app.map);
+        app.mapView.then(function(){
+          setMapViewWidgets();
+          setPopupTemplate(app.mapView,app.layer);
+        });
+        app.pointSymbol2d = createPointSymbol2d();
+        // 3D
+        app.sceneView = createView("SceneView","sceneViewDiv",app.map);
+        app.renderer3d = createRenderer(false);
+        app.sceneView.then(function(){
+          setSceneViewWidgets();
+          setPopupTemplate(app.sceneView,app.layer)
+        });
+        app.pointSymbol3d = createPointSymbol3d();              
+        // Set active view
+        app.activeView = app.mapView;
+        // Search
+        app.searchWidgetNav = createSearchWidget("searchNavDiv",app.mapView,app.layer);
+        // Panels
+        setPanelWatch();
+      }
+
+      /* Map */
+
+      function createMap(layerUrl) {
+        var map = new Map({
+          basemap: app.basemap2d,
+          ground: "world-elevation",
+        });
+        return map;
+      }
+
+      /* Layer */
+
+      function createLayer(is2d,url) {
+        var layer = new FeatureLayer({
+          url: url,
+          elevationInfo: is2d ? {} : {
+            "offset": 50,
+            "mode": "relativeToGround"// "on-the-ground" //"relativeToGround"
+          },
+          outFields: ["*"]
+        });
+        return layer;
+      }
+
+      function createRenderer(is2d) {
+        // Create symbol
+        function createSymbol(is2d,color){
+          var sym;
+          if (is2d) {
+            sym = {    
+              "color": color,
+              "width": app.symbolWidth2d,
+              "type": "esriSLS",
+              "style": "esriSLSSolid"
+            }
+          } else {
+            sym = {
+              "type": "LineSymbol3D",
+              "symbolLayers": [
+                {
+                  "size": app.symbolWidth3d,
+                  "type": "Path",
+                  "enable": true,
+                  "material": {
+                    "color": color,
+                    "transparency": 0
+                  }
+                }
+              ]
+            }
+          }
+          return sym;
+        }
+        var json = {
+          "type": "uniqueValue",
+          "field1": "Surface",
+          "defaultSymbol": null,
+          "uniqueValueInfos": [
+            {
+              "value": "soil",
+              "symbol": createSymbol(is2d,[215,0,0,255]),
+              "label": "soil"
+            },
+            {
+              "value": "asphalt",
+              "symbol": createSymbol(is2d,[230,150,0,255]),
+              "label": "asphalt"
+            },
+            {
+              "value": "gravel",
+              "symbol": createSymbol(is2d,[215,215,0,255]),
+              "label": "gravel"
+            },
+            {
+              "value": "bike lane",
+              "symbol": createSymbol(is2d,[110,170,0,255]),
+              "label": "bike lane"
+            }
+          ]
+        }
+        return RendererJSON.fromJSON(json);
+      }
+
+      /* Popup */
+
+      function setPopupTemplate(view,layer) {
+        // var popupTemplate = layer.popupTemplate;
+        var popupTemplate = new PopupTemplate();
+        // Title
+        popupTemplate.title = "{Local_Name}";
+        // Content
+        popupTemplate.content = function(value, key, data) {
+          var graphic = value.graphic.clone();
+          if (graphic) {
+            reset();
+            app.trailGeometry = densifyGeometry(graphic);
+            var length = getLineLength(app.trailGeometry);
+            var type = graphic.attributes["TYPE"] || "trail";
+            // var manager = graphic.attributes["Manager"] || "unknown";
+            // var rating = graphic.attributes["RATING"];
+            // var usage = graphic.attributes["USAGE"];
+            // var mgmt = graphic.attributes["MGMTAGENCY"];
+            // var system = graphic.attributes["SYSTEM"];
+            // rating = (rating === "Easy" || rating === "Expert") ? "an " + "<b>"+rating.toLowerCase()+"</b>" : "a " + "<b>"+rating.toLowerCase()+"</b>";
+            //return "This is " + rating + " trail that is <b>" + Math.round(length * 10) / 10 + " miles</b> long.<br><br><span class='text-caps'>" + system + " / " + mgmt + "</span>";  
+            //return "test";
+            return "This is a " + type + ".";
+          }
+        }.bind(this);
+        // Actions
+        var actions = [];
+        var playAction = {
+          title: "Play",
+          id: "playAction",
+          className: "esri-icon-play"
+        }
+        actions.push(playAction);
+        var playTriggerAction = function(event){
+          if (event.action.id === "playAction"){
+            view.popup.dockEnabled = true; // Dock
+            if (!app.animating) {
+              start();
+            } else {
+              stop();
+            }
+            //setPlayUI(app.animating);
+          }
+        }
+        view.popup.on("trigger-action", playTriggerAction.bind(this));
+        popupTemplate.actions = actions;
+        // Apply to layer
+        layer.popupTemplate = popupTemplate;
+        return popupTemplate;
+      }
+
+      /* Views */
+
+      function createView(viewType, div, map, tilt) {
+        var view;
+        if (viewType === "MapView") {
+          view = new MapView();
+        } else {
+          view = new SceneView();
+        }
+        view.set({
+          container: div,
+          map: map,
+          padding: app.viewPadding,
+          ui: {
+            components: ["zoom", "compass", "attribution"]
+          },
+          popup: new Popup(app.popupOptions),
+          center: app.lonlat,
+          zoom: app.zoom
+        });
+        return view;
+      }
+
+      function setMapViewWidgets() {
+        createHomeWidget(app.mapView, "top-left", 0);
+        //createLocateWidget(app.mapView, "top-left");
+        createBasemapWidget(app.mapView, "satellite", "bottom-left");
+        createLegend(app.mapView, "bottom-right");
+        //createScaleBar(app.sceneView, "bottom-left");
+        setWidgetsVisible(app.mapView);
+        setPopupMinimize(app.mapView);
+        setPopupWatches(app.mapView);
+      }
+
+      function setSceneViewWidgets(type, div, map, layer) {
+        app.sceneHome = createHomeWidget(app.sceneView, "top-left", 0);
+        createNavigationToggleWidget(app.sceneView, "top-left");
+        //createLocateWidget(app.sceneView, "top-left");
+        //createBasemapWidget(app.sceneView, "topo-vector", "bottom-left");
+        createLegend(app.sceneView, "bottom-right");
+        //createScaleBar(app.sceneView, "bottom-left");
+        setWidgetsVisible(app.sceneView);
+        //setWatchSymbolSize(app.sceneView);
+        // // Force webGL to load and draw...
+        // setInitialExtent(app.sceneView, layer); 
+        setPopupMinimize(app.sceneView);      
+        setPopupWatches(app.sceneView);
+      }
+
+      // Extent
+
+      function setInitialExtent(view, layer){
+        view.whenLayerView(layer).then(function(layerView){
+          view.extent = layerView.layer.fullExtent;
+          app.sceneHome.viewpoint = view.viewpoint;
+          view.goTo({
+            target: view.extent.center,
+            tilt: app.tilt,
+            zoom: app.zoom + 1
+          });
+        });        
+      }
+
+      function setElevation(layer) {
+        layer.elevationInfo = {
+          offset: 10,
+          mode: "relativeToGround"
+        }
+      }
+
+      function densifyGeometry(feature) {
+        var outGeometry;
+        if (feature) {
+          var inGeometry = feature.geometry.clone();
+          var path = [];
+          for (var i = 0; i < inGeometry.paths.length; i++) {
+            for (var j = 0; j < inGeometry.paths[i].length; j++) {
+              path.push(inGeometry.paths[i][j]);
+            }
+          }
+          var polyLine = new Polyline({
+            paths:[path],
+            spatialReference: inGeometry.spatialReference
+          });
+          outGeometry = geometryEngine.geodesicDensify(polyLine, 100, "meters");
+        }
+        return outGeometry;
+      }
+
+      function getLineLength(polyLine) {
+        return geometryEngine.planarLength(polyLine, "miles");
+      }
+
+      function setPlayUI(start) {
+        if (start) {
+          query(".esri-popup__action[title='Play'] > .esri-popup__icon").removeClass("esri-icon-play").addClass("esri-icon-pause");
+        } else {
+          query(".esri-popup__action[title='Play'] > .esri-popup__icon").removeClass("esri-icon-pause").addClass("esri-icon-play");
+        }
+      }
+
+      function setPopupMinimize(view) {
+        query("#"+view.container.id + " .esri-popup__header-title").on("click", function(e){
+          query("#"+view.container.id + " .esri-popup__main-container").toggleClass("esri-popup-collapsed");
+          view.popup.reposition();
+        });
+      }
+
+      function setPopupWatches(view) {
+        // Popup - dock top-right desktop, bottom for mobile
+        view.watch("widthBreakpoint", function(breakPoint){        
+          if (breakPoint === "medium" || breakPoint === "large" || breakPoint === "xlarge") {
+           view.popup.dockOptions.position = "top-right";
+          } else {
+           view.popup.dockOptions.position = "bottom-center";
+          }
+        });
+        // Popup - show/hide panels when popup is docked
+        view.popup.watch(["visible", "currentDockPosition"], function(){
+          var docked = view.popup.visible && view.popup.currentDockPosition;
+          if (docked) {
+            query(".calcite-panels .panel, .calcite-panels .panel-collapse").collapse("hide");
+          }
+        });
+      }
+
+      function setPanelWatch() {
+        // Panels - undock popup when panel shows
+        query(".calcite-panels .panel").on("show.bs.collapse", function(e) {
+          if (app.activeView.popup.currentDockPosition) {
+            app.activeView.popup.dockEnabled = false;
+          }
+        });
+      }
+
+      /* Widgets */
+
+      function setWidgetsVisible(view) {
+        function setWidgetVisible(id,visible) {
+          view.ui._components.find(function(i) { 
+              if (i.id.indexOf(id) > -1) {
+                i.widget.visible = visible;
+                return;
+              }
+            });
+        }
+        view.watch("widthBreakpoint", function(val){
+          if (val === "small" || val === "xsmall") {
+            setWidgetVisible("Legend",false);
+          } else {
+            setWidgetVisible("Legend",true);
+          }
+        });
+      }
+
+      function createSearchWidget(parentId,view,lyr) {
+        // Widget
+        var search = new Search({
+            view: view,
+            highlightEnabled: false
+          }, parentId);
+        search.sources = []; //clear
+        search.sources.push({
+          featureLayer: lyr,
+          searchFields: ["Local_Name"],
+          displayField: "Local_Name",
+          exactMatch: false,
+          outFields: ["*"],
+          resultGraphicEnabled: true,
+          name: "Trails",
+          placeholder: "Enter a trail name",
+          popupEnabled: true,
+          popupOpenOnSelect: true
+        });
+        // search.popupEnabled = true,
+        search.popupOpenOnSelect = true;
+        // Manually show popup
+        search.watch("selectedResult", function(result){
+          if (result && result.feature) {
+            var feature = result.feature;
+            var location = result.extent.center;
+            app.activeView.popup.open({
+              features: [feature],
+              location: location
+            });
+          } else {
+            reset();
+          }
+        });
+        return search;
+      }
+
+      function createHomeWidget(view, position, index) {
+        var home = new Home({
+            view: view
+          });
+        view.ui.add(home, {
+          position: position,
+          index: index
+        });
+        return home;
+      }
+
+      function createLocateWidget(view, position) {
+        var locate = new Locate({
+          view: view
+        });
+        view.ui.add(locate, position);
+        return locate;
+      }
+
+      function createBasemapWidget(view, secondBasemap, position) {
+        var basemapToggle = new BasemapToggle({
+          view: view, 
+          secondaryBasemap: secondBasemap
+        });
+        view.ui.add(basemapToggle, position);
+        return basemapToggle;
+      }
+
+      function createLegend(view, position) {
+        var legend = new Legend({
+          view: view,
+          layerInfos: [{
+            layer: app.layer,
+            title: "Park Trails"
+          }]
+        });
+        view.ui.add(legend, position);
+        return legend;
+      }
+
+      function createNavigationToggleWidget(view, position) {
+        var navToggle = new NavigationToggle({
+          view: view
+        });
+        view.ui.add(navToggle, position);
+        return navToggle;
+      }
+
+      function createScaleBar(view, position) {
+         var scalebar = new ScaleBar({
+          view: view
+        });
+        view.ui.add(scalebar, position);
+        return scalebar; 
+      }
+
+      /* Symbols */
+
+      function createPointSymbol2d() {
+        var sym = new SimpleMarkerSymbol({
+          size: app.pointSymbolSize2d,
+          color: app.pointSymbolColorHex,
+          outline: {width: 2, color: "#fff"}
+        });
+        return sym;
+      }
+
+      function createPointSymbol3d() {
+        var sym = new PointSymbol3D({
+          symbolLayers: [new ObjectSymbol3DLayer({
+            width: app.pointSymbolSize3d,
+            height: app.pointSymbolSize3d,
+            resource: {
+              primitive: "sphere"
+            },
+            material: {
+              color: app.pointSymbolColorHex
+            }
+          })]
+        });
+        return sym;
+      }
+
+      // function calcSymbolSize3d() {
+      //   if (app.sceneView.scale > 0) {
+      //     var size = app.sceneView.scale / 200;
+      //     app.pointSymbolSize3d = size;          
+      //   }
+      // }
+
+      // function update3dGraphicSymbol() {
+      //   if (app.sceneView.graphics && app.sceneView.graphics.length) {
+      //     var point = app.sceneView.graphics.getItemAt(0).geometry;
+      //     updateGraphic(point);
+      //   }
+      // }
+
+      // function update3dGraphicSize(){
+      //   calcSymbolSize3d();
+      //   app.pointSymbol3d = createPointSymbol3d();
+      //   //update3dGraphicSymbol();
+      // }
+
+      // function setWatchSymbolSize(view) {
+      //   watchUtils.whenFalse(view, "updating", function(val) {
+      //     // Reset symbol size (3D only)
+      //     update3dGraphicSize();
+      //   });
+      // }
+
+      /* Player */
+
+      // Start animation and update UI
+      function start() {
+        if (app.trailGeometry) {
+          if (app.activeView.type === "3d") {
+            if (app.activeView.camera.tilt < 1) {
+              app.activeView.goTo({
+                target: app.trailGeometry,
+                tilt: app.tilt
+              }).then(function(){
+                update3dGraphicSize();
+                animate(true);   
+              })             
+            } else {
+              animate(true);
+            }
+          } else {
+            animate(true);  
+          }
+        }
+      }
+
+      // Stop animation and update UI
+      function stop() {
+        animate(false);
+      }
+
+      // Move graphic at max screen frame rate
+      function animate(animate) {
+        setPlayUI(animate);
+        if (app.task) {
+          app.task.remove();
+        }
+        if (animate) {
+          app.task = Scheduler.addFrameTask({
+            update: function() {
+              // Busy?
+              if (!app.activeView.interacting && app.trailGeometry) {
+                // Navigate
+                if (app.index !== app.trailGeometry.paths[0].length - 1) {
+                  var point = getPoint(app.index);
+                  updateGraphic(point);
+                  updateDistanceUI(point);
+                } else {
+                  app.index = 0;
+                  // app.task.remove();
+                  // app.animating = false;
+                  app.trailDistance = 0;  
+                  // app.index = 0;
+                  // setPlayUI(false);
+                  start();  // continuous loop
+                }
+                app.index++;
+              }
+            }
+          });
+        } 
+        app.animating = animate;
+      }
+
+      function getPoint(index) {
+          var pt = app.trailGeometry.paths[0][index];
+          var point = new Point({
+            x: pt[0],
+            y: pt[1],
+            spatialReference: app.activeView.spatialReference
+          });
+        return point;
+      }
+
+      function updateGraphic(point) {
+        var sym; 
+        if (app.activeView instanceof MapView) {
+          sym = app.pointSymbol2d;
+        } else {
+          sym = app.pointSymbol3d;
+        }
+        var graphic = new Graphic ({
+          symbol: sym,
+          geometry: point
+        });
+        app.activeView.graphics.removeAll();
+        app.activeView.graphics.add(graphic);
+      }
+
+      function updateDistanceUI(point) {
+        if (app.index === 0) {
+          return;
+        }
+        var lastPoint = getPoint(app.index -1);
+        app.trailDistance += geometryEngine.distance(lastPoint, point, "miles");
+        query(".esri-popup__action[title='Play'] .esri-popup__action-text").innerHTML("Play " + (Math.round(app.trailDistance*10)/10) + " miles");
+      }
+
+      function reset() {
+        // Stop
+        stop();
+        // Clear
+        app.mapView.graphics.removeAll();
+        app.sceneView.graphics.removeAll();
+        // Reset
+        app.trailDistance = 0;
+        app.animating = false;
+        app.index = 0;
+      }
+
+      /* Toggle views */
+
+      function hidePopups() {
+        if (app.mapView) {
+          app.mapView.popup.close();
+        }
+        if (app.sceneView) {
+          app.sceneView.popup.close();
+        }
+      }
+
+      function setActiveView(view) {
+        app.activeView = view;
+      }
+
+      function setBasemap(basemap) {
+        app.activeView.map.basemap = basemap;
+      }
+
+      function setRenderer(renderer) {
+        app.activeView.map.layers.getItemAt(0).renderer = renderer;
+      }
+
+      function setSearchView(toView) {
+        app.searchWidgetNav.view = toView;
+      }
+
+      function setLocation(fromView, toView, is3d) {
+        reset();
+        var viewpoint = fromView.viewpoint.clone();
+        return toView.goTo({
+          target: viewpoint,
+          tilt: is3d ? app.tilt : 0
+        })
+      }
+
+      function setPopup(fromView,toView) {
+        // Sync popup when done drawing
+        watchUtils.whenFalseOnce(toView, "updating", function(){
+          if (fromView.popup.selectedFeature) {
+            var selectedFeature = fromView.popup.selectedFeature.clone();
+            //toView.popup.clear();
+            toView.popup.open({
+              title: fromView.popup.title,
+              content: fromView.popup.content,
+              //features: [selectedFeature],
+              //updateLocationEnabled: true
+              location: fromView.popup.location
+            });
+            //toView.popup.clear();
+            toView.popup.dockEnabled = fromView.popup.dockEnabled;  
+            //toView.popup.reposition();
+            //fromView.popup.close();
+            // fromView.popup.clear();
+          }
+        });
+      }
+
+      function closePopup(view) {
+        view.popup.close();
+      }
+
+      /* Tab 2D and 3D */
+
+      query("nav li a[data-toggle='tab']").on("shown.bs.tab", function(e) {
+        // Sync views
+        if (e.target.text === "2D") {
+          closePopup(app.sceneView);
+          setActiveView(app.mapView);
+          setBasemap(app.basemap2d);
+          setRenderer(app.renderer2d);
+          setSearchView(app.mapView);
+          setLocation(app.sceneView, app.mapView, false);
+        } else {
+          closePopup(app.mapView);
+          setActiveView(app.sceneView);
+          setBasemap(app.basemap3d);
+          setRenderer(app.renderer3d);
+          setSearchView(app.sceneView);
+          setLocation(app.mapView, app.sceneView, true);
+        }
+      });
+    
+    });// dojo
+  </script>
+
+</body>
+</html>
