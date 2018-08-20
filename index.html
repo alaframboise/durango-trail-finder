@@ -50,6 +50,10 @@
       color: #828282;
     }
 
+    #playID {
+      margin-left: 10px;
+    }
+
     @media (min-width: 768px) {
       .modal-dialog {
         width: 600px;
@@ -113,7 +117,7 @@
               <div class="row">
                 <div class="splash-body">
                   <div class="text-center">
-                    <h3>Welcome to the Trail Explorer</h3>
+                    <h3>Welcome to the Virtual Trail Explorer</h3>
                     <hr>
                     <p>Use this application to find and explore trails. Take this app with you in the field. Give us your feedback or report issues when you are done.</a>.</p>
                     <br>
@@ -530,7 +534,7 @@
             var mgmt = graphic.attributes["MGMTAGENCY"];
             var system = graphic.attributes["SYSTEM"];
             rating = (rating === "Easy" || rating === "Expert") ? "an " + "<b>"+rating.toLowerCase()+"</b>" : "a " + "<b>"+rating.toLowerCase()+"</b>";
-            return "This is " + rating + " trail that is <b>" + Math.round(length * 10) / 10 + " miles</b> long.<br><hr><div id='playDiv' class='hidden'><span><b>Trail Player</b></span><br><br><button id='playerButton' type='button' class='btn btn-success' aria-label='Left Align'><span class='glyphicon glyphicon-play'></span></button><br><div id='playID'></div></div><br><div id='directionsDiv' class='hidden'><span><b>Driving Directions</b></span><div id='directionsID'></div></div><div id='ratingsDiv' class='hidden'><span><b>Feedback</b></span><br><br><button class='btn btn-block btn-success'>Submit Trail Report</button></div>";
+            return "This is " + rating + " trail that is <b>" + Math.round(length * 10) / 10 + " miles</b> long.<br><hr><div id='playDiv' class='hidden'><span><b>Trail Player</b></span><br><br><button id='playerButton' type='button' class='btn btn-success' aria-label='Left Align'><span class='glyphicon glyphicon-play'></span></button><span id='playID'></span></div><br><div id='directionsDiv' class='hidden'><span><b>Driving Directions</b></span><div id='directionsID'></div></div><div id='ratingsDiv' class='hidden'><span><b>Feedback</b></span><br><br><button class='btn btn-block btn-success'>Submit Trail Report</button></div>";
 
             //<br><br><span class='text-caps'>" + system + " / " + mgmt + "</span><div id='directionsID'></div";  
           }
@@ -559,7 +563,11 @@
               var directions = new Directions({
                 view: view,
                 container: "directionsID",
-                routeServiceUrl: "https://utility.arcgis.com/usrsvcs/appservices/M6Hdrm6917F6mkrn/rest/services/World/Route/NAServer/Route_World"
+                routeServiceUrl: "https://utility.arcgis.com/usrsvcs/appservices/M6Hdrm6917F6mkrn/rest/services/World/Route/NAServer/Route_World",
+                goToOverride: function(theView,goToParams) {
+                  return;
+                }
+
               });
 
               function createStopSymbol(color, size) {
